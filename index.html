@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      html, body {
+        height: 100%;
+        padding: 0;
+        font-family: Helvetica, sans-serif;
+      }
+
+      #selection-box {
+        position: absolute;
+        display: none;
+        box-shadow: 0 0 0 0.25em cyan;
+      }
+
+      .selection-box-handle { 
+        position: absolute; 
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+        width: 1em;
+        height: 1em;
+        background-color: cyan;
+      }
+      .selection-box-handle.top { top: 0; }
+      .selection-box-handle.vcenter { top: 50%; }
+      .selection-box-handle.bottom { top: 100%; }
+      .selection-box-handle.left { left: 0; }
+      .selection-box-handle.hcenter { left: 50%; }
+      .selection-box-handle.right { left: 100%; }
+
+      body > aside {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2em;
+        box-sizing: border-box;
+        padding: 0.25em;
+        background-color: whitesmoke;
+      }
+
+      body > main {
+        position: absolute;
+        left: 2em;
+        top: 0;
+        bottom: 0;
+        right: 0;
+      }
+
+      #drawer-canvas.rect {
+        cursor: crosshair;
+      }
+
+      #drawer-canvas.selection {
+        cursor: auto;
+      }
+
+      input[type="radio"] { display: none; }
+
+      button,
+      input[type="radio"] + label {
+        -webkit-appearance: none;
+        appearance: none;
+        display: block;
+        border: none;
+        font-size: 1em;
+        padding: 0;
+        margin: 0;
+        margin-bottom: 0.25em;
+        width: 1.5em;
+        height: 1.5em;
+        line-height: 1.5em;
+        text-align: center;
+        border-radius: 0.25em;
+        background-color: grey;
+        color: whitesmoke;
+      }
+
+      input[type="radio"]:checked + label {
+        background-color: black;
+      }
+
+      input[type="color"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 1.5em;
+        padding: 0;
+        height: 1.5em;
+        border: 0;
+        font-size: 1em; 
+        border-radius: 0.25em;
+        overflow: hidden;
+      }
+
+      input[type="color" i]::-webkit-color-swatch-wrapper {
+        padding: 0;
+      }
+
+      input[type="color" i]::-webkit-color-swatch {
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <input class="js-drawer-setmode" type="radio" name="drawer-mode" id="drawer-mode-selection" value="selection" checked /> 
+      <label for="drawer-mode-selection">S</label>
+      
+      <input class="js-drawer-setmode" type="radio" name="drawer-mode" id="drawer-mode-rect" value="rect" />
+      <label for="drawer-mode-rect">R</label>
+
+      <input type="color" id="drawer-background" value="#000000" />
+    </aside>
+
+    <main id="drawer-canvas" class="selection">
+      <div id="selection-box">
+        <div class="selection-box-handle top left"></div>
+        <div class="selection-box-handle top hcenter"></div>
+        <div class="selection-box-handle top right"></div>
+        <div class="selection-box-handle vcenter left"></div>
+        <div class="selection-box-handle vcenter right"></div>
+        <div class="selection-box-handle bottom left"></div>
+        <div class="selection-box-handle bottom hcenter"></div>
+        <div class="selection-box-handle bottom right"></div>
+      </div>
+    </main>
+
+    <script>
+      (function (global) {
+        function _extend () {
+          var args      = [].slice.call(arguments);
+          var reciever  = args[0];
+          var providers = args.slice(1);
+
+          return providers.reduce(function (reciever, provider) {
+            return Object.keys(provider).reduce(function (reciever, key) {
+              reciever[key] = provider[key];
+              return reciever;
+            }, reciever);
+          }, reciever);
+        }
+        
+        global._ = {
+          extend: _extend
+        };
+      })(window);
+
+      (function (global, doc) {
+        var drawer = { 
+          mode: 'selection',
+          rects: [],
+          canvas: doc.getElementById('drawer-canvas'),
+          palette: {
+            background: '#000000',
+            foreground: '#FFFFFF'
+          },
+          controls: {
+            background: doc.getElementById('drawer-background'),
+            modeSwitchers: []
+          },
+          selectionBox: {
+            element: doc.getElementById('selection-box'),
+            active: false,
+            update: function (box) {
+              _.extend(this.element.style, {
+                top: box.y + 'px',
+                left: box.x + 'px',
+                width: box.width + 'px',
+                height: box.height + 'px'
+              });
+            },
+            activate: function () {
+              this.active = true;
+              this.element.style.display = 'block';
+            },
+            deactivate: function () {
+              this.active = false;
+              this.element.style.display = 'none';
+            }
+          }
+        };
+
+        function initModeSwitchers () {
+          var controls = doc.getElementsByClassName('js-drawer-setmode');
+          var index = controls.length;
+          while (index--) {
+            drawer.controls.modeSwitchers.push(controls[index]);
+            controls[index].addEventListener('click', function (e) {
+              var previousMode = drawer.mode;
+              var newMode = drawer.controls.modeSwitchers.filter(function (elem) {
+                return !!elem.checked;    
+              })[0].value;
+              drawer.canvas.classList.remove(previousMode);
+              drawer.canvas.classList.add(newMode);
+              drawer.mode = newMode;
+            });
+          }
+        }      
+
+        function initControls () {
+          var bgInput = drawer.controls.background;
+
+          bgInput.addEventListener('blur', function (e) {
+            var color = e.target.value;
+            drawer.palette.background = color;
+          });
+
+          initModeSwitchers();
+        }
+        initControls();
+
+        drawer.controls.modeSwitchers
+
+        function Rect (boundingBox) {
+          return _.extend(this, boundingBox);
+        }
+
+        function draw () {
+          if (!this.element) {
+            this.element = doc.createElement('div');
+            drawer.canvas.appendChild(this.element);
+            this.select();
+            
+            this.element.addEventListener('click', function (e) {
+              if (drawer.mode === 'selection') {
+                this.select();
+              }
+            }.bind(this));
+          }
+          
+          _.extend(this.element.style, {
+            position: 'absolute',
+            top: this.y + 'px',
+            left: this.x + 'px',
+            width: this.width + 'px',
+            height: this.height + 'px',
+            backgroundColor: drawer.palette.background
+          });
+        }
+        Rect.prototype.draw = draw;
+
+        function update (boundingBox) {
+          _.extend(this, boundingBox);
+          this.draw();
+        }
+        Rect.prototype.update = update;
+
+        function destroy () {
+          this.element.parentNode.removeChild(this.element);
+          drawer.selectionBox.deactivate();
+        }
+        Rect.prototype.destroy = destroy;
+
+        doc.addEventListener('keydown', function (e) {
+          if (e.keyCode === 8) {
+            e.preventDefault();
+            drawer.selectedRect && drawer.selectedRect.destroy(); 
+          }
+        });
+
+        function select () {
+          drawer.selectedRect && 
+            drawer.selectedRect.element.classList.remove('selected');
+          
+          drawer.selectionBox.activate();
+          drawer.selectionBox.update(this);
+          drawer.selectedRect = this;
+          this.element.classList.add('selected');
+        }
+        Rect.prototype.select = select;
+
+        function rectMouseDown (e) {
+          var canvas = drawer.canvas;
+
+          drawer.drawing = true;
+          var rect = new Rect({ 
+            x: e.x - canvas.offsetLeft, 
+            y: e.y - canvas.offsetTop, 
+            width: 0, 
+            height: 0 
+          });
+          rect.draw();
+          drawer.rects.push(rect);
+          drawer.selectionBox.activate();
+        }
+
+        function rectMouseMove (e) {
+          if (drawer.drawing && drawer.selectedRect) {
+            var canvas = drawer.canvas;
+            
+            var offsetX = e.x - canvas.offsetLeft;
+            var offsetY = e.y - canvas.offsetTop;
+
+            var width = Math.abs(drawer.startDrag.x - offsetX);
+            var height = Math.abs(drawer.startDrag.y - offsetY);
+            var x = drawer.startDrag.x < offsetX ? offsetX - width : offsetX;
+            var y = drawer.startDrag.y < offsetY ? offsetY - height : offsetY;
+
+            var box = {
+              x: x, 
+              y: y,
+              width: width,
+              height: height
+            };
+
+            drawer.selectedRect.update(box);
+            drawer.selectionBox.update(box);
+          }
+        }
+
+        var modes = {
+          rect: {
+            mousedown: rectMouseDown,
+            mousemove: rectMouseMove
+          }
+        };
+
+        drawer.canvas.addEventListener('mousedown', function (e) {
+          drawer.startDrag = { x: e.x, y: e.y };
+
+          modes[drawer.mode] && 
+            modes[drawer.mode].mousedown && 
+            modes[drawer.mode].mousedown(e);
+        });
+
+        drawer.canvas.addEventListener('mousemove', function (e) {
+          modes[drawer.mode] && 
+            modes[drawer.mode].mousemove && 
+            modes[drawer.mode].mousemove(e);
+        });
+
+        drawer.canvas.addEventListener('mouseup', function (e) {
+          drawer.startDrag = false;
+          drawer.drawing = false;
+        });
+      })(window, document);
+    </script>
+  </body>
+</html>
